@@ -1,8 +1,8 @@
 # Project 3 - GT FileSystem
 
-**Release Date: Monday, Mar 11, 2024**
+**Release Date: Monday, Oct 21, 2024**
 
-**Due Date: Wednesday, Apr 3, 2024 11:59pm**
+**Due Date: Monday, Nov 4, 2024 11:59pm**
 
 ---
 

@@ -5,8 +5,10 @@
 #include <cstdio>
 #include <cstdlib>
 #include <iostream>
+#include <sys/_pthread/_pthread_mutex_t.h>
 #include <unistd.h>
 #include <sys/wait.h>
+#include <unordered_map>
 
 using namespace std;
 
@@ -18,12 +20,10 @@ using namespace std;
 #define MAX_FILENAME_LEN 255
 #define MAX_NUM_FILES_PER_DIR 1024
 
+#include <pthread.h>
+
 extern int do_verbose;
 
-typedef struct gtfs {
-    string dirname;
-    // TODO: Add any additional fields if necessary
-} gtfs_t;
 
 typedef struct file {
     string filename;
@@ -31,8 +31,15 @@ typedef struct file {
     // TODO: Add any additional fields if necessary
 } file_t;
 
+typedef struct gtfs {
+    string dirname;
+    // TODO: Add any additional fields if necessary
+    unordered_map<string, file_t> map;
+
+} gtfs_t;
+
 typedef struct write {
-    string filename;
+    string filename; // dirname + filename?
     int offset;
     int length;
     char *data;
@@ -40,6 +47,8 @@ typedef struct write {
 } write_t;
 
 // GTFileSystem basic API calls
+
+extern unordered_map<string, gtfs_t*> directories;
 
 gtfs_t* gtfs_init(string directory, int verbose_flag);
 int gtfs_clean(gtfs_t *gtfs);

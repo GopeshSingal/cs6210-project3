@@ -1,17 +1,41 @@
 #include "gtfs.hpp"
+#include "pthread.h"
+#include "sys/stat.h"
+#include "unistd.h"
+#include "errno.h"
+#include <cerrno>
+#include <cstddef>
 
 #define VERBOSE_PRINT(verbose, str...) do { \
     if (verbose) cout << "VERBOSE: "<< __FILE__ << ":" << __LINE__ << " " << __func__ << "(): " << str; \
 } while(0)
 
 int do_verbose;
+unordered_map<string, gtfs_t*> directories;
 
 gtfs_t* gtfs_init(string directory, int verbose_flag) {
     do_verbose = verbose_flag;
-    gtfs_t *gtfs = NULL;
     VERBOSE_PRINT(do_verbose, "Initializing GTFileSystem inside directory " << directory << "\n");
-    //TODO: Add any additional initializations and checks, and complete the functionality
+    // TODO: Add locking mechanism to prevent race condition when creating a GTFS
+    auto map_fs = directories.find(directory);
+    if (map_fs != directories.end()) {
+        VERBOSE_PRINT(do_verbose, "Success\n"); //On success returns non NULL.
+        return map_fs->second;
+    }
+    gtfs* gtfs = new gtfs_t;
+    gtfs->dirname = directory;
 
+    //! Check if the directory already exists, if not create it
+    if (mkdir(directory.c_str(), 0755) == -1) {
+        if (errno == EEXIST) {
+            std::cout << "Directory already exists!\n";
+        } else {
+            VERBOSE_PRINT(do_verbose, "Failed\n"); //On success returns non NULL.
+            return nullptr;
+        }
+    }
+
+    directories[directory] = gtfs;
     VERBOSE_PRINT(do_verbose, "Success\n"); //On success returns non NULL.
     return gtfs;
 }
@@ -89,7 +113,7 @@ char* gtfs_read_file(gtfs_t* gtfs, file_t* fl, int offset, int length) {
 write_t* gtfs_write_file(gtfs_t* gtfs, file_t* fl, int offset, int length, const char* data) {
     write_t *write_id = NULL;
     if (gtfs and fl) {
-        VERBOSE_PRINT(do_verbose, "Writting " << length << " bytes starting from offset " << offset << " inside file " << fl->filename << "\n");
+        VERBOSE_PRINT(do_verbose, "Writing " << length << " bytes starting from offset " << offset << " inside file " << fl->filename << "\n");
     } else {
         VERBOSE_PRINT(do_verbose, "GTFileSystem or file does not exist\n");
         return NULL;

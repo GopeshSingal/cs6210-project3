@@ -4,10 +4,13 @@
 #include "unistd.h"
 #include "errno.h"
 #include <__config>
+#include <_stdio.h>
 #include <cerrno>
 #include <cstddef>
+#include <cstdio>
 #include <cstring>
 #include <string>
+#include <sys/fcntl.h>
 #include <unordered_map>
 #include <utility>
 #include <sys/mman.h>
@@ -65,6 +68,9 @@ int gtfs_clean(gtfs_t *gtfs) {
             }
             // free(write_step);
         }
+        remove(value->log_file.c_str());
+        open(value->log_file.c_str(), O_CREAT, 0666);
+
     }
     VERBOSE_PRINT(do_verbose, "Success\n"); //On success returns 0.
     return ret;
@@ -132,6 +138,7 @@ file_t* gtfs_open_file(gtfs_t* gtfs, string filename, int file_length) {
     fl->mapped_file = mapped_file;
     fl->file_length = file_length;
     fl->flag = getpid();
+    fl->log_file = fl->filename.substr(0, fl->filename.length() - 4) + "-log.txt";
 
     gtfs->map[filename] = fl;
 
@@ -232,6 +239,7 @@ write_t* gtfs_write_file(gtfs_t* gtfs, file_t* fl, int offset, int length, const
     write_id->offset = offset;
     write_id->filename = fl->filename;
     write_id->synced = 0;
+    write_id->log_file = fl->log_file;
 
     //! Copy the data onto the file
     memcpy((char*)fl->mapped_file + offset, data, length);
@@ -259,6 +267,19 @@ int gtfs_sync_write_file(write_t* write_id) {
         return -1;
     }
     ssize_t written_bytes = write(fd, write_id->data, write_id->length);
+    if (written_bytes < 0) {
+        VERBOSE_PRINT(do_verbose, "Failed to write to the disk memory!\n");
+        close(fd);
+        return -1;
+    }
+    close(fd);
+    fd = open(write_id->log_file.c_str(), O_RDWR | O_CREAT, 0666);
+    if (lseek(fd, 0, SEEK_END) == -1) {
+        VERBOSE_PRINT(do_verbose, "Failed to lseek!\n");
+        close(fd);
+        return -1;
+    }
+    written_bytes = write(fd, write_id->data, write_id->length);
     if (written_bytes < 0) {
         VERBOSE_PRINT(do_verbose, "Failed to write to the disk memory!\n");
         close(fd);

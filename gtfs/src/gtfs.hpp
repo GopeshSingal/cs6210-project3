@@ -36,6 +36,7 @@ typedef struct write {
     void* mapped_file;
     char* overwritten_data;
     int synced;
+    string log_file;
 } write_t;
 
 typedef struct file {
@@ -45,13 +46,13 @@ typedef struct file {
     pid_t flag;
     void* mapped_file;
     std::vector<write_t*> log;
+    string log_file;
 } file_t;
 
 typedef struct gtfs {
     string dirname;
     // TODO: Add any additional fields if necessary
     unordered_map<string, file_t*> map;
-
 } gtfs_t;
 
 

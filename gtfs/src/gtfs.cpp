@@ -70,9 +70,11 @@ file_t* gtfs_open_file(gtfs_t* gtfs, string filename, int file_length) {
     auto f = gtfs->map.find(filename);
     if (f != gtfs->map.end()) {
         if (f->second->flag != 0) {
+            VERBOSE_PRINT(do_verbose, "Another process already opened this file\n");
             return NULL;
         }
         if (f->second->file_length > file_length) {
+            VERBOSE_PRINT(do_verbose, "The file length is too short. Data will be lost, aborting\n");
             return NULL;
         }
 
@@ -80,27 +82,31 @@ file_t* gtfs_open_file(gtfs_t* gtfs, string filename, int file_length) {
 
         if (f->second->file_length < file_length) {
             if (ftruncate(fd, file_length) == -1) {
+                VERBOSE_PRINT(do_verbose, "File could not be resized\n");
                 return NULL;
             }
             munmap(f->second->mapped_file, f->second->file_length);
             f->second->mapped_file = mmap(NULL, file_length, PROT_READ | PROT_WRITE, MAP_PRIVATE, fd, 0);
             if (f->second->mapped_file == MAP_FAILED) {
+                VERBOSE_PRINT(do_verbose, "Memory mapping failed\n");
                 return NULL;
             }
             f->second->file_length = file_length;
         }
 
-        f->second->flag = 1;
+        f->second->flag = getpid();
         VERBOSE_PRINT(do_verbose, "Success\n"); //On success returns non NULL.
         return f->second;
     }
     string path = gtfs->dirname + "/" + filename;
-    int fd = open(path.c_str(), O_RDWR | O_CREAT);
+    int fd = open(path.c_str(), O_RDWR | O_CREAT, 0666);
     if (fd == -1) {
+        perror("Error opening file");
         return NULL;
     }
 
     if (ftruncate(fd, file_length) == -1) {
+        perror("Error expanding file size");
         return NULL;
     }
 
@@ -109,11 +115,13 @@ file_t* gtfs_open_file(gtfs_t* gtfs, string filename, int file_length) {
     fl->filename = filename;
     fl->file_length = file_length;
     fl->mapped_file = mapped_file;
-    fl->file_length = 1;
+    fl->file_length = file_length;
+    fl->flag = getpid();
 
     gtfs->map[filename] = fl;
 
-    VERBOSE_PRINT(do_verbose, "Success\n"); //On success returns non NULL.
+    VERBOSE_PRINT(do_verbose, "Success"); //On success returns non NULL.
+    std::cout << " Process ID: " << getpid() << std::endl;
     return fl;
 }
 
@@ -173,8 +181,10 @@ char* gtfs_read_file(gtfs_t* gtfs, file_t* fl, int offset, int length) {
         VERBOSE_PRINT(do_verbose, "Invalid offset or length\n");
         return nullptr;
     }
+    ret_data = new char[length];  // Allocate sufficient memory for data
     memcpy(ret_data, (char*)fl->mapped_file + offset, length);
-    VERBOSE_PRINT(do_verbose, "Success\n"); //On success returns pointer to data read.
+    VERBOSE_PRINT(do_verbose, "Success YEET\n"); //On success returns pointer to data read.
+    std::cout << "Buffer contents: " << ret_data << std::endl;
     return ret_data;
 }
 
@@ -198,6 +208,7 @@ write_t* gtfs_write_file(gtfs_t* gtfs, file_t* fl, int offset, int length, const
     }
     //! Create the write_id
     write_id = new write_t;
+    write_id->data = new char[length];  // Allocate sufficient memory for data
     memcpy(write_id->data, data, length);
     write_id->length = length;
     write_id->offset = offset;

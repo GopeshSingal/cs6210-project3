@@ -6,6 +6,7 @@
 #include <cstdlib>
 #include <iostream>
 #include <sys/_pthread/_pthread_mutex_t.h>
+#include <sys/_types/_pid_t.h>
 #include <unistd.h>
 #include <sys/wait.h>
 #include <unordered_map>
@@ -30,7 +31,7 @@ typedef struct file {
     string filename;
     int file_length;
     // TODO: Add any additional fields if necessary
-    int flag;
+    pid_t flag;
     void* mapped_file;
 } file_t;
 

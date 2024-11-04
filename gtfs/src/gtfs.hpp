@@ -46,6 +46,8 @@ typedef struct file {
     pid_t flag;
     void* mapped_file;
     std::vector<write_t*> log;
+    int fd;
+    struct flock lock;
     string log_file;
 } file_t;
 

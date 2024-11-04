@@ -3,6 +3,7 @@
 #include "sys/stat.h"
 #include "unistd.h"
 #include "errno.h"
+#include <__config>
 #include <cerrno>
 #include <cstddef>
 #include <string>
@@ -125,8 +126,11 @@ int gtfs_close_file(gtfs_t* gtfs, file_t* fl) {
         return ret;
     }
     //TODO: Add any additional initializations and checks, and complete the functionality
-
-    VERBOSE_PRINT(do_verbose, "Success\n"); //On success returns 0.
+    if (fl->flag > 0) {
+        fl->flag = 0;
+        VERBOSE_PRINT(do_verbose, "Success\n"); //On success returns 0.
+        return 0;
+    }
     return ret;
 }
 
@@ -139,8 +143,16 @@ int gtfs_remove_file(gtfs_t* gtfs, file_t* fl) {
         return ret;
     }
     //TODO: Add any additional initializations and checks, and complete the functionality
-
-    VERBOSE_PRINT(do_verbose, "Success\n"); //On success returns 0.
+    if (fl->flag > 0) {
+        return -1;
+    }
+    string pathname = gtfs->dirname + "/" + fl->filename;
+    if (remove(pathname.c_str()) == 0) {
+        gtfs->map.erase(fl->filename);
+        free(fl);
+        VERBOSE_PRINT(do_verbose, "Success\n"); // On success returns 0.
+        return 0;
+    }
     return ret;
 }
 
@@ -153,7 +165,15 @@ char* gtfs_read_file(gtfs_t* gtfs, file_t* fl, int offset, int length) {
         return NULL;
     }
     //TODO: Add any additional initializations and checks, and complete the functionality
-
+    if (fl->flag != getpid()) {
+        VERBOSE_PRINT(do_verbose, "This process has not opened this file!\n");
+        return nullptr;
+    }
+    if (offset < 0 or length < 0 or offset + length > fl->file_length) {
+        VERBOSE_PRINT(do_verbose, "Invalid offset or length\n");
+        return nullptr;
+    }
+    memcpy(ret_data, (char*)fl->mapped_file + offset, length);
     VERBOSE_PRINT(do_verbose, "Success\n"); //On success returns pointer to data read.
     return ret_data;
 }
@@ -166,7 +186,28 @@ write_t* gtfs_write_file(gtfs_t* gtfs, file_t* fl, int offset, int length, const
         VERBOSE_PRINT(do_verbose, "GTFileSystem or file does not exist\n");
         return NULL;
     }
+
     //TODO: Add any additional initializations and checks, and complete the functionality
+    if (fl->flag != getpid()) {
+        VERBOSE_PRINT(do_verbose, "This process has not opened this file!\n");
+        return nullptr;
+    }
+    if (offset < 0 or length < 0 or offset > fl->file_length) {
+        VERBOSE_PRINT(do_verbose, "Invalid offset or length\n");
+        return nullptr;
+    }
+    //! Create the write_id
+    write_id = new write_t;
+    memcpy(write_id->data, data, length);
+    write_id->length = length;
+    write_id->offset = offset;
+    write_id->filename = fl->filename;
+
+    //! Copy the data onto the file
+    memcpy((char*)fl->mapped_file + offset, data, length);
+    if (offset + length > fl->file_length) {
+        fl->file_length = offset + length;
+    }
 
     VERBOSE_PRINT(do_verbose, "Success\n"); //On success returns non NULL.
     return write_id;

@@ -5,6 +5,10 @@
 #include "errno.h"
 #include <cerrno>
 #include <cstddef>
+#include <string>
+#include <utility>
+#include <sys/mman.h>
+
 
 #define VERBOSE_PRINT(verbose, str...) do { \
     if (verbose) cout << "VERBOSE: "<< __FILE__ << ":" << __LINE__ << " " << __func__ << "(): " << str; \
@@ -55,7 +59,6 @@ int gtfs_clean(gtfs_t *gtfs) {
 }
 
 file_t* gtfs_open_file(gtfs_t* gtfs, string filename, int file_length) {
-    file_t *fl = NULL;
     if (gtfs) {
         VERBOSE_PRINT(do_verbose, "Opening file " << filename << " inside directory " << gtfs->dirname << "\n");
     } else {
@@ -63,6 +66,51 @@ file_t* gtfs_open_file(gtfs_t* gtfs, string filename, int file_length) {
         return NULL;
     }
     //TODO: Add any additional initializations and checks, and complete the functionality
+    auto f = gtfs->map.find(filename);
+    if (f != gtfs->map.end()) {
+        if (f->second->flag != 0) {
+            return NULL;
+        }
+        if (f->second->file_length > file_length) {
+            return NULL;
+        }
+
+        int fd = open(filename.c_str(), O_RDWR);
+
+        if (f->second->file_length < file_length) {
+            if (ftruncate(fd, file_length) == -1) {
+                return NULL;
+            }
+            munmap(f->second->mapped_file, f->second->file_length);
+            f->second->mapped_file = mmap(NULL, file_length, PROT_READ | PROT_WRITE, MAP_PRIVATE, fd, 0);
+            if (f->second->mapped_file == MAP_FAILED) {
+                return NULL;
+            }
+            f->second->file_length = file_length;
+        }
+
+        f->second->flag = 1;
+        VERBOSE_PRINT(do_verbose, "Success\n"); //On success returns non NULL.
+        return f->second;
+    }
+    string path = gtfs->dirname + "/" + filename;
+    int fd = open(path.c_str(), O_RDWR | O_CREAT);
+    if (fd == -1) {
+        return NULL;
+    }
+
+    if (ftruncate(fd, file_length) == -1) {
+        return NULL;
+    }
+
+    void* mapped_file = mmap(NULL, file_length, PROT_READ | PROT_WRITE, MAP_PRIVATE, fd, 0);
+    file_t *fl = new file_t;
+    fl->filename = filename;
+    fl->file_length = file_length;
+    fl->mapped_file = mapped_file;
+    fl->file_length = 1;
+
+    gtfs->map[filename] = fl;
 
     VERBOSE_PRINT(do_verbose, "Success\n"); //On success returns non NULL.
     return fl;

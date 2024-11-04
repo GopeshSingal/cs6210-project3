@@ -9,6 +9,7 @@
 #include <unistd.h>
 #include <sys/wait.h>
 #include <unordered_map>
+#include <fcntl.h>
 
 using namespace std;
 
@@ -29,12 +30,14 @@ typedef struct file {
     string filename;
     int file_length;
     // TODO: Add any additional fields if necessary
+    int flag;
+    void* mapped_file;
 } file_t;
 
 typedef struct gtfs {
     string dirname;
     // TODO: Add any additional fields if necessary
-    unordered_map<string, file_t> map;
+    unordered_map<string, file_t*> map;
 
 } gtfs_t;
 

@@ -6,8 +6,10 @@
 #include <__config>
 #include <cerrno>
 #include <cstddef>
+#include <cstdio>
 #include <cstring>
 #include <string>
+#include <sys/fcntl.h>
 #include <unordered_map>
 #include <utility>
 #include <sys/mman.h>
@@ -43,7 +45,7 @@ gtfs_t* gtfs_init(string directory, int verbose_flag) {
     }
 
     directories[directory] = gtfs;
-    VERBOSE_PRINT(do_verbose, "Success\n"); //On success returns non NULL.
+    VERBOSE_PRINT(do_verbose, "Success\n"); // On success returns non NULL.
     return gtfs;
 }
 
@@ -78,42 +80,50 @@ file_t* gtfs_open_file(gtfs_t* gtfs, string filename, int file_length) {
         return NULL;
     }
     //TODO: Add any additional initializations and checks, and complete the functionality
-    auto f = gtfs->map.find(filename);
-    //! Check to see if the file already exists in the file system
-    if (f != gtfs->map.end()) {
-        if (f->second->flag != 0) {
-            VERBOSE_PRINT(do_verbose, "Another process already opened this file\n");
-            return NULL;
-        }
-        if (f->second->file_length > file_length) {
+    auto map_fs = gtfs->map.find(filename);
+
+    // * Locking mechanism
+    struct flock lock;
+    lock.l_type = F_WRLCK;
+    lock.l_whence = SEEK_SET;
+    lock.l_start = 0;
+    lock.l_len = 0;
+    lock.l_pid = getpid();
+
+    // * Check to see if the file already exists in the file system
+    string path = gtfs->dirname + "/" + filename;
+    if (map_fs != gtfs->map.end()) {
+        if (map_fs->second->file_length > file_length) {
             VERBOSE_PRINT(do_verbose, "The file length is too short. Data will be lost, aborting\n");
             return NULL;
         }
-
-        int fd = open(filename.c_str(), O_RDWR);
-
-        if (f->second->file_length < file_length) {
+        int fd = open(path.c_str(), O_RDWR);
+        if (fcntl(fd, F_SETLK, &lock) == -1) {
+            VERBOSE_PRINT(do_verbose, "Another process already opened this file\n");
+            return nullptr;
+        }
+        map_fs->second->fd = fd;
+        map_fs->second->lock = lock;
+        if (map_fs->second->file_length < file_length) {
             if (ftruncate(fd, file_length) == -1) {
                 VERBOSE_PRINT(do_verbose, "File could not be resized\n");
                 close(fd);
                 return NULL;
             }
-            munmap(f->second->mapped_file, f->second->file_length);
-            f->second->mapped_file = mmap(NULL, file_length, PROT_READ | PROT_WRITE, MAP_PRIVATE, fd, 0);
-            if (f->second->mapped_file == MAP_FAILED) {
+            munmap(map_fs->second->mapped_file, map_fs->second->file_length);
+            map_fs->second->mapped_file = mmap(NULL, file_length, PROT_READ | PROT_WRITE, MAP_PRIVATE, fd, 0);
+            if (map_fs->second->mapped_file == MAP_FAILED) {
                 VERBOSE_PRINT(do_verbose, "Memory mapping failed\n");
                 close(fd);
                 return NULL;
             }
-            f->second->file_length = file_length;
+            map_fs->second->file_length = file_length;
         }
-
-        f->second->flag = getpid();
+        map_fs->second->flag = getpid();
         VERBOSE_PRINT(do_verbose, "Success\n"); // On success returns non NULL.
         close(fd);
-        return f->second;
+        return map_fs->second;
     }
-    string path = gtfs->dirname + "/" + filename;
     int fd = open(path.c_str(), O_RDWR | O_CREAT, 0666);
     if (fd == -1) {
         perror("Error opening file");
@@ -136,7 +146,6 @@ file_t* gtfs_open_file(gtfs_t* gtfs, string filename, int file_length) {
     gtfs->map[filename] = fl;
 
     VERBOSE_PRINT(do_verbose, "Success"); //On success returns non NULL.
-    // std::cout << " Process ID: " << getpid() << std::endl;
     return fl;
 }
 
@@ -149,6 +158,10 @@ int gtfs_close_file(gtfs_t* gtfs, file_t* fl) {
         return ret;
     }
     //TODO: Add any additional initializations and checks, and complete the functionality
+    if (fcntl(fl->fd, F_UNLCK, &(fl->lock)) == -1) {
+        VERBOSE_PRINT(do_verbose, "what");
+        return -1;
+    }
     if (fl->flag > 0) {
         fl->flag = 0;
         VERBOSE_PRINT(do_verbose, "Success\n"); //On success returns 0.
@@ -166,7 +179,7 @@ int gtfs_remove_file(gtfs_t* gtfs, file_t* fl) {
         return ret;
     }
     //TODO: Add any additional initializations and checks, and complete the functionality
-    if (fl->flag > 0) {
+    if (fl->flag > 0) { // Don't remove an opened file
         return -1;
     }
     string pathname = gtfs->dirname + "/" + fl->filename;

@@ -11,6 +11,7 @@
 #include <sys/wait.h>
 #include <unordered_map>
 #include <fcntl.h>
+#include <vector>
 
 using namespace std;
 
@@ -26,6 +27,16 @@ using namespace std;
 
 extern int do_verbose;
 
+typedef struct write {
+    string filename; // dirname + filename?
+    int offset;
+    int length;
+    char *data;
+    // TODO: Add any additional fields if necessary
+    void* mapped_file;
+    char* overwritten_data;
+    int synced;
+} write_t;
 
 typedef struct file {
     string filename;
@@ -33,6 +44,7 @@ typedef struct file {
     // TODO: Add any additional fields if necessary
     pid_t flag;
     void* mapped_file;
+    std::vector<write_t*> log;
 } file_t;
 
 typedef struct gtfs {
@@ -42,13 +54,7 @@ typedef struct gtfs {
 
 } gtfs_t;
 
-typedef struct write {
-    string filename; // dirname + filename?
-    int offset;
-    int length;
-    char *data;
-    // TODO: Add any additional fields if necessary
-} write_t;
+
 
 // GTFileSystem basic API calls
 

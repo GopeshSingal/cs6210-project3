@@ -196,7 +196,7 @@ char* gtfs_read_file(gtfs_t* gtfs, file_t* fl, int offset, int length) {
         VERBOSE_PRINT(do_verbose, "Invalid offset or length\n");
         return nullptr;
     }
-    ret_data = (char *)calloc(1, length * sizeof(char));  // Allocate sufficient memory for data
+    ret_data = (char *)calloc(length, sizeof(char*));  // Allocate sufficient memory for data
     memcpy(ret_data, (char*)fl->mapped_file + offset, length);
     VERBOSE_PRINT(do_verbose, "Success\n"); // On success returns pointer to data read.
     return ret_data;
@@ -223,8 +223,8 @@ write_t* gtfs_write_file(gtfs_t* gtfs, file_t* fl, int offset, int length, const
 
     //! Create the write_id
     write_id = new write_t;
-    write_id->data = (char *) calloc(1, length * sizeof(char));  // Allocate sufficient memory for data
-    write_id->overwritten_data = (char *) calloc(1, length * sizeof(char));
+    write_id->data = (char *) calloc(length, sizeof(char*));  // Allocate sufficient memory for data
+    write_id->overwritten_data = (char *) calloc(length, sizeof(char*));
     memcpy(write_id->data, data, length);
     memcpy(write_id->overwritten_data, ((char*)fl->mapped_file) + offset, length);
     write_id->mapped_file = fl->mapped_file;

@@ -66,7 +66,7 @@ int gtfs_clean(gtfs_t *gtfs) {
             if (write_step->synced <= 0) {
                 gtfs_sync_write_file(write_step);
             }
-            // free(write_step);
+            free(write_step);
         }
         value->log.clear();
         remove(value->log_file.c_str());
@@ -115,14 +115,14 @@ file_t* gtfs_open_file(gtfs_t* gtfs, string filename, int file_length) {
                 return NULL;
             }
             munmap(map_fs->second->mapped_file, map_fs->second->file_length);
-            map_fs->second->mapped_file = mmap(NULL, file_length, PROT_READ | PROT_WRITE, MAP_PRIVATE, fd, 0);
-            if (map_fs->second->mapped_file == MAP_FAILED) {
-                VERBOSE_PRINT(do_verbose, "Memory mapping failed\n");
-                close(fd);
-                return NULL;
-            }
-            map_fs->second->file_length = file_length;
         }
+        map_fs->second->mapped_file = mmap(NULL, file_length, PROT_READ | PROT_WRITE, MAP_PRIVATE, fd, 0);
+        if (map_fs->second->mapped_file == MAP_FAILED) {
+            VERBOSE_PRINT(do_verbose, "Memory mapping failed\n");
+            close(fd);
+            return NULL;
+        }
+        map_fs->second->file_length = file_length;
         map_fs->second->flag = getpid();
         VERBOSE_PRINT(do_verbose, "Success\n"); // On success returns non NULL.
         return map_fs->second;
@@ -259,6 +259,7 @@ write_t* gtfs_write_file(gtfs_t* gtfs, file_t* fl, int offset, int length, const
     memcpy(write_id->data, data, length);
     memcpy(write_id->overwritten_data, ((char*)fl->mapped_file) + offset, length);
     write_id->mapped_file = fl->mapped_file;
+    write_id->overwritten_length = length;
     write_id->length = length;
     write_id->offset = offset;
     write_id->filename = fl->filename;
@@ -314,20 +315,20 @@ int gtfs_sync_write_file(write_t* write_id) {
     write_id->data = nullptr;
     write_id->overwritten_data = nullptr;
     VERBOSE_PRINT(do_verbose, "Success\n"); //On success returns number of bytes written.
-    return ret;
+    return write_id->length;
 }
 
 //! Assume that only the most recent write is being aborted at a time
 int gtfs_abort_write_file(write_t* write_id) {
     int ret = -1;
     if (write_id) {
-        VERBOSE_PRINT(do_verbose, "Aborting write of " << write_id->length << " bytes starting from offset " << write_id->offset << " inside file " << write_id->filename << "\n");
+        VERBOSE_PRINT(do_verbose, "Aborting write of " << write_id->overwritten_length << " bytes starting from offset " << write_id->offset << " inside file " << write_id->filename << "\n");
     } else {
         VERBOSE_PRINT(do_verbose, "Write operation does not exist\n");
         return ret;
     }
     //TODO: Add any additional initializations and checks, and complete the functionality
-    memcpy(((char *)write_id->mapped_file) + write_id->offset, write_id->overwritten_data, write_id->length);
+    memcpy(((char *)write_id->mapped_file) + write_id->offset, write_id->overwritten_data, write_id->overwritten_length);
     write_id->synced = 1;
     free(write_id->data);
     free(write_id->overwritten_data);
@@ -347,9 +348,33 @@ int gtfs_clean_n_bytes(gtfs_t *gtfs, int bytes){
         VERBOSE_PRINT(do_verbose, "GTFileSystem does not exist\n");
         return ret;
     }
-
+    int save_left = bytes;
+    for (auto it = gtfs->map.begin(); it != gtfs->map.end() && save_left > 0; ++it) {
+        file_t* value = it->second;
+        for (auto log_it = value->log.begin(); log_it != value->log.end() && save_left > 0; ++log_it) {
+            write_t* write_step = *log_it;
+            if (write_step->synced <= 0) {
+                if (save_left - write_step->length > 0) {
+                    gtfs_sync_write_file(write_step);
+                    save_left -= write_step->length;
+                } else {
+                    gtfs_sync_write_file_n_bytes(write_step, save_left);
+                    save_left = 0;
+                }
+            }
+            if (write_step->synced == 1) {
+                value->log.erase(log_it);
+                free(write_step);
+            }
+        }
+        remove(value->log_file.c_str());
+        open(value->log_file.c_str(), O_CREAT, 0666);
+    }
     VERBOSE_PRINT(do_verbose, "Success\n"); //On success returns 0.
     return ret;
+
+    VERBOSE_PRINT(do_verbose, "Success\n"); //On success returns 0.
+    return ret; 
 }
 
 int gtfs_sync_write_file_n_bytes(write_t* write_id, int bytes){
@@ -360,9 +385,45 @@ int gtfs_sync_write_file_n_bytes(write_t* write_id, int bytes){
         VERBOSE_PRINT(do_verbose, "Write operation does not exist\n");
         return ret;
     }
+    int fd = open(write_id->filename.c_str(), O_RDWR, 0666);
+    if (lseek(fd, write_id->offset, SEEK_SET) == -1) {
+        VERBOSE_PRINT(do_verbose, "Failed to lseek!\n");
+        return -1;
+    }
+    ssize_t written_bytes = write(fd, write_id->data, bytes);
+    if (written_bytes < 0) {
+        VERBOSE_PRINT(do_verbose, "Failed to write to the disk memory!\n");
+        return -1;
+    }
+    fd = open(write_id->log_file.c_str(), O_RDWR | O_CREAT, 0666);
+    if (lseek(fd, 0, SEEK_END) == -1) {
+        VERBOSE_PRINT(do_verbose, "Failed to lseek!\n");
+        close(fd);
+        return -1;
+    }
+    written_bytes = write(fd, write_id->data, write_id->length);
+    if (written_bytes < 0) {
+        VERBOSE_PRINT(do_verbose, "Failed to write to the disk memory!\n");
+        close(fd);
+        return -1;
+    }
+    close(fd);
+    if (bytes < write_id->length) {
+        char * new_data = (char *) calloc(write_id->length - bytes, sizeof(char*));  // Allocate sufficient memory for data
+        copy(write_id->data + bytes, write_id->data + write_id->length, new_data);
+        free(write_id->data);
+        write_id->length = write_id->length - bytes;
+        write_id->data = new_data;
+    } else {
+        write_id->synced = 1;
+        free(write_id->data);
+        free(write_id->overwritten_data);
+        write_id->data = nullptr;
+        write_id->overwritten_data = nullptr;
+    }
 
     VERBOSE_PRINT(do_verbose, "Success\n"); //On success returns 0.
-    return ret;
+    return 0;
 }
 
 int gtfs_get_file_length(file_t * fl) {

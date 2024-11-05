@@ -262,11 +262,67 @@ void test_write_write_read() {
 void test_read_beyond_file() {
 
     gtfs_t *gtfs = gtfs_init(directory, verbose);
-    string filename = "test1.txt";
+    string filename = "test9.txt";
     file_t *fl = gtfs_open_file(gtfs, filename, 100);
     char *data1 = gtfs_read_file(gtfs, fl, 200, 10);
     if (data1 != NULL) {
         string(data1).compare("") == 0 ? cout << PASS : cout << FAIL;
+    } else {
+        cout << FAIL;
+    }
+    gtfs_close_file(gtfs, fl);
+}
+
+// **Test 11**: Testing that gtfs_sync_write_file_n_bytes works.
+
+void test_sync_write_n_bytes() {
+
+    gtfs_t *gtfs = gtfs_init(directory, verbose);
+    string filename = "test10.txt";
+    file_t *fl = gtfs_open_file(gtfs, filename, 100);
+
+    string str = "Hello World\n";
+    write_t *wrt = gtfs_write_file(gtfs, fl, 0, str.length(), str.c_str());
+    gtfs_sync_write_file_n_bytes(wrt, 5);
+    gtfs_close_file(gtfs, fl);
+    
+    fl = gtfs_open_file(gtfs, filename, 100);
+
+    char *data1 = gtfs_read_file(gtfs, fl, 0, 10);
+    if (data1 != NULL) {
+        string(data1).compare("Hello") == 0 ? cout << PASS : cout << FAIL;
+    } else {
+        cout << FAIL;
+    }
+    gtfs_close_file(gtfs, fl);
+}
+
+// **Test 11**: Testing that gtfs_clean_n_bytes works.
+void test_clean_n_bytes() {
+
+    gtfs_t *gtfs = gtfs_init(directory, verbose);
+    string filename = "test11.txt";
+    file_t *fl = gtfs_open_file(gtfs, filename, 100);
+
+    string str = "Hello World\n";
+    write_t *wrt = gtfs_write_file(gtfs, fl, 0, str.length(), str.c_str());
+    write_t *wrt1 = gtfs_write_file(gtfs, fl, 20, str.length(), str.c_str());
+    write_t *wrt2 = gtfs_write_file(gtfs, fl, 40, str.length(), str.c_str());
+    gtfs_clean_n_bytes(gtfs, 18);
+    gtfs_close_file(gtfs, fl);
+    
+    fl = gtfs_open_file(gtfs, filename, 100);
+
+    char *data1 = gtfs_read_file(gtfs, fl, 0, str.length());
+    if (data1 != NULL) {
+        string(data1).compare(str) == 0 ? cout << PASS : cout << FAIL;
+    } else {
+        cout << FAIL;
+    }
+
+    char *data2 = gtfs_read_file(gtfs, fl, 40, str.length());
+    if (data2 != NULL) {
+        string(data2).compare("Hello ") == 0 ? cout << PASS : cout << FAIL;
     } else {
         cout << FAIL;
     }
@@ -324,5 +380,13 @@ int main(int argc, char **argv) {
 
     cout << "================== Test 9 ==================\n";
     cout << "Testing that empty string returned when reading past end of file.\n";
-    test_write_write_read();
+    test_read_beyond_file();
+
+    cout << "================== Test 10 ==================\n";
+    cout << "Testing that gtfs_sync_write_file_n_bytes works.\n";
+    test_sync_write_n_bytes();
+
+    cout << "================== Test 11 ==================\n";
+    cout << "Testing that gtfs_clean_n_bytes works.\n";
+    test_clean_n_bytes();
 }

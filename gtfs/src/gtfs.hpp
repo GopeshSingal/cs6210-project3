@@ -33,6 +33,7 @@ typedef struct write {
     int length;
     char *data;
     // TODO: Add any additional fields if necessary
+    int overwritten_length;
     void* mapped_file;
     char* overwritten_data;
     int synced;

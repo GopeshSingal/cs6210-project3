@@ -1,0 +1,60 @@
+\documentclass{article}
+\usepackage[utf8]{inputenc}
+\usepackage{geometry}
+\usepackage{amsmath}
+\usepackage{hyperref}
+ \geometry{
+ a4paper,
+ total={170mm,257mm},
+ left=20mm,
+ top=20mm,
+ }
+ \usepackage{graphicx}
+ \usepackage{titling}
+ \usepackage{hanging}
+ \title{Project 3: GT FileSystem
+}
+\author{Eva Grace Bennett \& Gopesh Singal}
+\date{November 4th, 2024}
+ 
+ \usepackage{fancyhdr}
+\fancypagestyle{plain}{%  the preset of fancyhdr 
+    \fancyhf{} % clear all header and footer fields
+    \fancyfoot[L]{\thedate}
+    \fancyhead[L]{CS-6210}
+    \fancyhead[R]{\theauthor}
+}
+\makeatletter
+\def\@maketitle{%
+  \newpage
+  \null
+  \vskip 1em%
+  \begin{center}%
+  \let \footnote \thanks
+    {\LARGE \@title \par}%
+    \vskip 1em%
+    %{\large \@date}%
+  \end{center}%
+  \par
+  \vskip 1em}
+\makeatother
+
+\usepackage{lipsum}  
+\usepackage{cmbright}
+
+\begin{document}
+
+\maketitle
+
+\noindent\begin{tabular}{@{}ll}
+    Authors: Eva Grace Bennett, Gopesh Singal
+\end{tabular}
+
+\section*{Design Justification}
+When creating the system, the logging mechanism was based upon the \texttt{write\_t} structure; whenever a process attempts to write to a file it has opened, a \texttt{write\_t} object is created, serving as an in-memory log of the write attempt. This \texttt{write\_t} object holds the data it wrote to the file, as well as the data it overwrote. In doing so, if the write was chosen to be aborted, then the changes made to the in-memory representation of the file, the \texttt{file\_t} object, can be undone and reverted to just before the write operation was applied. When performing \texttt{gtfs\_sync\_write\_file}, the \texttt{write\_t} is then applied to the disk memory, being applied to the log tracking the write changes and to the file in question. This is to align with the specifications outlined in \href{https://piazza.com/class/m00d9edry1e5xc/post/232}{note @232} on Piazza, where under Method 2 it is stated we may ``sync all corresponding pending in-memory logs by moving them to on-disk logs and applying them to the file" for \texttt{gtfs\_sync\_write\_file}.
+\subsection*{Data Persistence}
+When \texttt{gtfs\_sync\_write\_file} is called by a process, the \texttt{write\_t} structure passed in is applied to the on-disk logs and file, ensuring that even if the process were to crash, the data is now recoverable from the disk memory. The process would simply need to call \texttt{gtfs\_open\_file} once more to receive the persisted changes. In a sense, for a change written to persist, the process needs to call \texttt{gtfs\_sync\_write\_file} or \texttt{gtfs\_clean} to update the disk memory. 
+\subsection*{Crash Recovery}
+\subsection*{Performance for Reading / Writing}
+
+\end{document}

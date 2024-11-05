@@ -175,20 +175,7 @@ void test_open_size_too_small() {
     gtfs_close_file(gtfs, fl);
 
     fl = gtfs_open_file(gtfs, filename, 50);
-    // File 
-    write_t *wrt2 = gtfs_write_file(gtfs, fl, 20, str.length(), str.c_str());
-    gtfs_sync_write_file(wrt2);
-    gtfs_close_file(gtfs, fl);
-
-    fl = gtfs_open_file(gtfs, filename, 100);
-    
-    char *data2 = gtfs_read_file(gtfs, fl, 20, str.length());
-    if (data2 == NULL) {
-        cout << FAIL;
-    } else if (string(data2).compare("") == 0) {
-        cout << PASS;
-    }
-
+    fl == NULL ? cout << PASS : cout << FAIL;
     gtfs_close_file(gtfs, fl);
 }
 

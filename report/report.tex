@@ -56,5 +56,15 @@ When creating the system, the logging mechanism was based upon the \texttt{write
 When \texttt{gtfs\_sync\_write\_file} is called by a process, the \texttt{write\_t} structure passed in is applied to the on-disk logs and file, ensuring that even if the process were to crash, the data is now recoverable from the disk memory. The process would simply need to call \texttt{gtfs\_open\_file} once more to receive the persisted changes. In a sense, for a change written to persist, the process needs to call \texttt{gtfs\_sync\_write\_file} or \texttt{gtfs\_clean} to update the disk memory. 
 \subsection*{Crash Recovery}
 \subsection*{Performance for Reading / Writing}
+\subsection*{Testing}
+Several test cases were added to check the basic correctness of our design and to check several edge cases. Test cases 1-3 are the basic cases provided with the project. The remaining test cases are custom cases. Each test outputs pass/fail and are described below.
+\begin{itemize}
+    \item Test 4: Only synced writes should be saved to disk in the case of a crash. The \texttt{crash\_writer} makes two writes to the file but only syncs one. Next \texttt{crash\_reader} checks that the on-disk file only contains the synced write to PASS.
+    \item Test 5: An existing file can only be opened if the new file length is as large as the existing file. A file of length 100 bytes is opened and reopened but with a length of 50 bytes. A nullptr for the file object should be returned to PASS.
+    \item Test 6: When an existing file is opened with a file length larger than the current length, the existing file needs to be extended. This test opens a file of size 100 bytes and then reopens it with size 200 bytes. A helper api function, \texttt{gtfs\_get\_file\_length}, returns the length of a file. The new file length should be 200 bytes to PASS.
+    \item Test 7: Only one process should be allowed to open a file at a time. This test forks a child and then calls an opener function which attempts to open the same file. The parent and child should attempt to open the file at the same time, but the child will be unsuccessful since the parent does not close the file. The file returned by \texttt{gtfs\_open\_file} should be a nullptr to PASS.
+    \item Test 8: The most recent version of a file should be read. This test makes two writes to the file and then reads the file. First \textbf{Hello} is written and then \textbf{World} writes over it. \texttt{gtfs\_read\_file} should return \textbf{World} for the test case to PASS.
+    \item Test 9: If a process attempts to read a file at an offset that is longer than the existing file, an empty string, ``", should be returned by \texttt{gtfs\_read\_file}. This test case attempts to read a file of length 100 bytes at offset 200 bytes. \texttt{gtfs\_read\_file} should output ``" causing the test to PASS.
+\end{itemize}
 
 \end{document}

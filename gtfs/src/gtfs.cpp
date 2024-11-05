@@ -68,9 +68,9 @@ int gtfs_clean(gtfs_t *gtfs) {
             }
             // free(write_step);
         }
+        value->log.clear();
         remove(value->log_file.c_str());
         open(value->log_file.c_str(), O_CREAT, 0666);
-
     }
     VERBOSE_PRINT(do_verbose, "Success\n"); //On success returns 0.
     return ret;
@@ -125,7 +125,6 @@ file_t* gtfs_open_file(gtfs_t* gtfs, string filename, int file_length) {
         }
         map_fs->second->flag = getpid();
         VERBOSE_PRINT(do_verbose, "Success\n"); // On success returns non NULL.
-        close(fd);
         return map_fs->second;
     }
     int fd = open(path.c_str(), O_RDWR | O_CREAT, 0666);
@@ -140,7 +139,6 @@ file_t* gtfs_open_file(gtfs_t* gtfs, string filename, int file_length) {
     }
 
     void* mapped_file = mmap(NULL, file_length, PROT_READ | PROT_WRITE, MAP_PRIVATE, fd, 0);
-    close(fd);
     file_t *fl = new file_t;
     fl->filename = path;
     fl->mapped_file = mapped_file;
@@ -150,7 +148,7 @@ file_t* gtfs_open_file(gtfs_t* gtfs, string filename, int file_length) {
 
     gtfs->map[filename] = fl;
 
-    VERBOSE_PRINT(do_verbose, "Success"); //On success returns non NULL.
+    VERBOSE_PRINT(do_verbose, "Success\n"); //On success returns non NULL.
     return fl;
 }
 
@@ -164,11 +162,22 @@ int gtfs_close_file(gtfs_t* gtfs, file_t* fl) {
     }
     //TODO: Add any additional initializations and checks, and complete the functionality
     if (fcntl(fl->fd, F_UNLCK, &(fl->lock)) == -1) {
-        VERBOSE_PRINT(do_verbose, "what");
+        perror( "File cannot be closed because file might not be open\n");
         return -1;
     }
     if (fl->flag > 0) {
         fl->flag = 0;
+        for (auto log_it = fl->log.begin(); log_it != fl->log.end(); ++log_it) {
+            write_t* write_step = *log_it;
+            if (write_step->synced == 0) {
+                free(write_step->data);
+                free(write_step->overwritten_data);
+                free(write_step);
+            }
+        }
+        fl->log.clear();
+        remove(fl->log_file.c_str());
+        open(fl->log_file.c_str(), O_CREAT, 0666);
         VERBOSE_PRINT(do_verbose, "Success\n"); //On success returns 0.
         return 0;
     }
@@ -187,7 +196,7 @@ int gtfs_remove_file(gtfs_t* gtfs, file_t* fl) {
     if (fl->flag > 0) { // Don't remove an opened file
         return -1;
     }
-    string pathname = gtfs->dirname + "/" + fl->filename;
+    string pathname = fl->filename;
     if (remove(pathname.c_str()) == 0) {
         gtfs->map.erase(fl->filename);
         free(fl);
@@ -209,6 +218,10 @@ char* gtfs_read_file(gtfs_t* gtfs, file_t* fl, int offset, int length) {
     if (fl->flag != getpid()) { // Make sure the process is the one that opened the file
         VERBOSE_PRINT(do_verbose, "This process has not opened this file!\n");
         return nullptr;
+    }
+    if (offset > fl->file_length) {
+        VERBOSE_PRINT(do_verbose, "Offset is greater than file length\n");
+        return "";
     }
     if (offset < 0 or length < 0 or offset + length > fl->file_length) { // Make sure that the input parameters aren't invalid
         VERBOSE_PRINT(do_verbose, "Invalid offset or length\n");
@@ -251,6 +264,7 @@ write_t* gtfs_write_file(gtfs_t* gtfs, file_t* fl, int offset, int length, const
     write_id->filename = fl->filename;
     write_id->synced = 0;
     write_id->log_file = fl->log_file;
+    write_id->fd = fl->fd;
 
     //! Copy the data onto the file
     memcpy((char*)fl->mapped_file + offset, data, length);
@@ -271,19 +285,16 @@ int gtfs_sync_write_file(write_t* write_id) {
         return ret;
     }
     //TODO: Add any additional initializations and checks, and complete the functionality
-    int fd = open((write_id->filename).c_str(), O_RDWR);
+    int fd = open(write_id->filename.c_str(), O_RDWR | O_CREAT, 0666);
     if (lseek(fd, write_id->offset, SEEK_SET) == -1) {
         VERBOSE_PRINT(do_verbose, "Failed to lseek!\n");
-        close(fd);
         return -1;
     }
     ssize_t written_bytes = write(fd, write_id->data, write_id->length);
     if (written_bytes < 0) {
         VERBOSE_PRINT(do_verbose, "Failed to write to the disk memory!\n");
-        close(fd);
         return -1;
     }
-    close(fd);
     fd = open(write_id->log_file.c_str(), O_RDWR | O_CREAT, 0666);
     if (lseek(fd, 0, SEEK_END) == -1) {
         VERBOSE_PRINT(do_verbose, "Failed to lseek!\n");
@@ -300,6 +311,8 @@ int gtfs_sync_write_file(write_t* write_id) {
     write_id->synced = 1;
     free(write_id->data);
     free(write_id->overwritten_data);
+    write_id->data = nullptr;
+    write_id->overwritten_data = nullptr;
     VERBOSE_PRINT(do_verbose, "Success\n"); //On success returns number of bytes written.
     return ret;
 }
@@ -315,9 +328,11 @@ int gtfs_abort_write_file(write_t* write_id) {
     }
     //TODO: Add any additional initializations and checks, and complete the functionality
     memcpy(((char *)write_id->mapped_file) + write_id->offset, write_id->overwritten_data, write_id->length);
+    write_id->synced = 1;
     free(write_id->data);
     free(write_id->overwritten_data);
-    free(write_id);
+    write_id->data = nullptr;
+    write_id->overwritten_data = nullptr;
     VERBOSE_PRINT(do_verbose, "Success.\n"); //On success returns 0.
     return 0;
 }
@@ -348,5 +363,15 @@ int gtfs_sync_write_file_n_bytes(write_t* write_id, int bytes){
 
     VERBOSE_PRINT(do_verbose, "Success\n"); //On success returns 0.
     return ret;
+}
+
+int gtfs_get_file_length(file_t * fl) {
+    if (fl) {
+        VERBOSE_PRINT(do_verbose, fl->filename << "file length: " << fl->file_length <<"\n");
+    } else {
+        VERBOSE_PRINT(do_verbose, "File does not exist\n");
+        return -1;
+    }
+    return fl->file_length;
 }
 

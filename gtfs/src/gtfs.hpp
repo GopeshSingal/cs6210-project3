@@ -37,6 +37,7 @@ typedef struct write {
     char* overwritten_data;
     int synced;
     string log_file;
+    int fd;
 } write_t;
 
 typedef struct file {
@@ -82,5 +83,6 @@ int gtfs_sync_write_file_n_bytes(write_t* write_id, int bytes);
 
 // TODO: Add here any additional data structures or API calls
 
+int gtfs_get_file_length(file_t * fl);
 
 #endif

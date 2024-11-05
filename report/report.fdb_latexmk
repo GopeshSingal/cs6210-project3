@@ -1,6 +1,7 @@
 # Fdb version 3
-["pdflatex"] 1730749958 "/Users/gopesh_singal/Desktop/cs6210/cs6210-project3/report/report.tex" "report.pdf" "report" 1730749958
-  "/Users/gopesh_singal/Desktop/cs6210/cs6210-project3/report/report.tex" 1730749958 2709 64376ec594d9957e9cae51a70e0010b1 ""
+["pdflatex"] 1730778196 "/Users/gopesh_singal/Desktop/cs6210/cs6210-project3/report/report.tex" "report.pdf" "report" 1730778197
+  "/Users/gopesh_singal/Desktop/cs6210/cs6210-project3/report/report.tex" 1730778196 9090 6226e8a30df9c3a43fc95f44594d8682 ""
+  "/usr/local/texlive/2022/texmf-dist/fonts/enc/dvips/cm-super/cm-super-ts1.enc" 1136849721 2900 1537cc8184ad1792082cd229ecc269f4 ""
   "/usr/local/texlive/2022/texmf-dist/fonts/map/fontname/texfonts.map" 1577235249 3524 cb3e574dea2d1052e39280babc910dc8 ""
   "/usr/local/texlive/2022/texmf-dist/fonts/tfm/public/amsfonts/cmextra/cmex7.tfm" 1246382020 1004 54797486969f23fa377b128694d548df ""
   "/usr/local/texlive/2022/texmf-dist/fonts/tfm/public/cmbright/cmbr10.tfm" 1136768653 1304 95ad082f6791446dc43df559d5c79878 ""
@@ -12,6 +13,8 @@
   "/usr/local/texlive/2022/texmf-dist/fonts/tfm/public/cmbright/cmbrsy10.tfm" 1136768653 1124 00df9b89c9eb5dfe10f722aab27b3560 ""
   "/usr/local/texlive/2022/texmf-dist/fonts/tfm/public/cmbright/cmbrsy8.tfm" 1136768653 1120 90e1ff57236ed6769cdb8e6d58469358 ""
   "/usr/local/texlive/2022/texmf-dist/fonts/tfm/public/cmbright/cmtl10.tfm" 1136768653 768 a723c4266cb3fba12f4a46cc38c2802e ""
+  "/usr/local/texlive/2022/texmf-dist/fonts/tfm/public/cmbright/tbmr10.tfm" 1136768653 1476 1d92fe70b3c834a471e5789b0cf798ef ""
+  "/usr/local/texlive/2022/texmf-dist/fonts/type1/public/cm-super/sfbmr10.pfb" 1215737283 93900 a2f71b17e4843e705710af210010eac4 ""
   "/usr/local/texlive/2022/texmf-dist/fonts/type1/public/hfbright/hfbr10.pfb" 1136849748 25127 0f921359adc22e3a8c6368d4f349f585 ""
   "/usr/local/texlive/2022/texmf-dist/fonts/type1/public/hfbright/hfbr17.pfb" 1136849748 29717 7eae3d614cd1357c57ce1187d436cac8 ""
   "/usr/local/texlive/2022/texmf-dist/fonts/type1/public/hfbright/hfbrbx10.pfb" 1136849748 26264 a52e03c805d428a50490261d87706e8d ""
@@ -49,6 +52,7 @@
   "/usr/local/texlive/2022/texmf-dist/tex/latex/cmbright/omscmbrs.fd" 1295311441 913 6f5c8d9c0442a5f4c6fb1114c7c0abd9 ""
   "/usr/local/texlive/2022/texmf-dist/tex/latex/cmbright/ot1cmbr.fd" 1295311441 1208 84b694fa6094d71e1e1e5ed3bfc3ae34 ""
   "/usr/local/texlive/2022/texmf-dist/tex/latex/cmbright/ot1cmtl.fd" 1295311441 990 c25d4d5d9c99de055edf8dd5025e689a ""
+  "/usr/local/texlive/2022/texmf-dist/tex/latex/cmbright/ts1cmbr.fd" 1295311441 1448 eb8e7d76330458c3c0f29a311a171987 ""
   "/usr/local/texlive/2022/texmf-dist/tex/latex/epstopdf-pkg/epstopdf-base.sty" 1579991033 13886 d1306dcf79a944f6988e688c1785f9ce ""
   "/usr/local/texlive/2022/texmf-dist/tex/latex/fancyhdr/fancyhdr.sty" 1612734021 17086 7ed8cbc4d361ec87392817e0dd4f65ec ""
   "/usr/local/texlive/2022/texmf-dist/tex/latex/geometry/geometry.sty" 1578002852 41601 9cf6c5257b1bc7af01a58859749dd37a ""
@@ -81,9 +85,9 @@
   "/usr/local/texlive/2022/texmf-var/fonts/map/pdftex/updmap/pdftex.map" 1647878959 4410336 7d30a02e9fa9a16d7d1f8d037ba69641 ""
   "/usr/local/texlive/2022/texmf-var/web2c/pdftex/pdflatex.fmt" 1675452247 2826433 b991583a1667ff5d2f9ae47f655b08a9 ""
   "/usr/local/texlive/2022/texmf.cnf" 1647878952 577 209b46be99c9075fd74d4c0369380e8c ""
-  "report.aux" 1730749958 686 e6bf9f11827e1eae1d85e75b99e0a183 "pdflatex"
+  "report.aux" 1730778197 686 4ce905362b6645b598ea182482e9aeed "pdflatex"
   "report.out" 0 -1 0 "pdflatex"
-  "report.tex" 1730749958 2709 64376ec594d9957e9cae51a70e0010b1 ""
+  "report.tex" 1730778196 9090 6226e8a30df9c3a43fc95f44594d8682 ""
   (generated)
   "report.aux"
   "report.log"
